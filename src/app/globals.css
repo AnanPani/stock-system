@@ -5,6 +5,25 @@
   --foreground: #171717;
 }
 
+
+::placeholder {
+  color: #9ca3af;
+  opacity: 1;
+}
+
+input, textarea {
+  color: #1f2937;
+}
+
+select {
+  color: #1f2937;
+  background-color: #ffffff;
+}
+
+select option {
+  color: #1f2937;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
