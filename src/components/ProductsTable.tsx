@@ -177,9 +177,6 @@ export default function ProductsTable({ products }: { products: Product[] }) {
                         <span className="text-xs text-gray-400">
                           {product.maxStock.toLocaleString('th-TH')}
                         </span>
-                        {product.unit && (
-                          <span className="text-xs text-gray-300">{product.unit}</span>
-                        )}
                       </div>
                       {product.quantity <= product.minStock && (
                         <p className="text-xs text-red-400 mt-0.5">⚠ ใกล้หมด</p>
@@ -219,12 +216,71 @@ export default function ProductsTable({ products }: { products: Product[] }) {
         </table>
 
         {/* Footer */}
-        {products.length > 0 && (
-          <div className="px-4 py-3 bg-gray-50 border-t border-gray-200 text-xs text-gray-400">
-            ทั้งหมด {products.length.toLocaleString('th-TH')} รายการ
-          </div>
-        )}
+{products.length > 0 && (
+  <div className="px-4 py-3 bg-gray-50 border-t border-gray-200">
+    <div className="flex items-center justify-between">
+      <span className="text-xs text-gray-400">
+        ทั้งหมด {products.length.toLocaleString('th-TH')} รายการ
+      </span>
+      <div className="flex items-center gap-6 text-xs">
+        {/* จำนวนชิ้นรวม */}
+        <div className="flex items-center gap-1.5">
+          <span className="text-gray-400">สต็อกรวม</span>
+          <span className="font-medium text-gray-700">
+            {products
+              .reduce((sum, p) => sum + p.quantity, 0)
+              .toLocaleString('th-TH')}{' '}
+            ชิ้น
+          </span>
+        </div>
+
+        {/* เส้นคั่น */}
+        <div className="w-px h-4 bg-gray-200" />
+
+        {/* มูลค่าต้นทุนรวม */}
+        <div className="flex items-center gap-1.5">
+          <span className="text-gray-400">ทุนรวม</span>
+          <span className="font-medium text-gray-700">
+            ฿{products
+              .reduce((sum, p) => sum + p.priceBuy * p.quantity, 0)
+              .toLocaleString('th-TH', { minimumFractionDigits: 2 })}
+          </span>
+        </div>
+
+        {/* เส้นคั่น */}
+        <div className="w-px h-4 bg-gray-200" />
+
+        {/* มูลค่าขายรวม */}
+        <div className="flex items-center gap-1.5">
+          <span className="text-gray-400">มูลค่าขายรวม</span>
+          <span className="font-bold text-green-600">
+            ฿{products
+              .reduce((sum, p) => sum + p.priceSell * p.quantity, 0)
+              .toLocaleString('th-TH', { minimumFractionDigits: 2 })}
+          </span>
+        </div>
+
+        {/* เส้นคั่น */}
+        <div className="w-px h-4 bg-gray-200" />
+
+        {/* กำไรรวม */}
+        <div className="flex items-center gap-1.5">
+          <span className="text-gray-400">กำไรรวม</span>
+          <span className={`font-bold ${
+            products.reduce((sum, p) => sum + (p.priceSell - p.priceBuy) * p.quantity, 0) >= 0
+              ? 'text-blue-600'
+              : 'text-red-600'
+          }`}>
+            ฿{products
+              .reduce((sum, p) => sum + (p.priceSell - p.priceBuy) * p.quantity, 0)
+              .toLocaleString('th-TH', { minimumFractionDigits: 2 })}
+          </span>
+        </div>
       </div>
+    </div>
+  </div>
+)}
+</div>
 
       {/* Lightbox */}
       {lightboxUrl && (
