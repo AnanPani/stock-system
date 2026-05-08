@@ -33,6 +33,7 @@ export async function PUT(
         priceBuy:    Number(body.priceBuy  ?? 0),
         priceSell:   Number(body.priceSell ?? 0),
         minStock:    Number(body.minStock  ?? 10),
+        maxStock:    Number(body.maxStock  ?? 1000),  // ← เพิ่มตรงนี้
         location:    body.location    || null,
         isActive:    body.isActive ?? true,
       },

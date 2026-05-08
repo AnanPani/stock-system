@@ -9,7 +9,8 @@ type Product = {
   id: number; code: string; name: string
   description: string | null; categoryId: number | null
   supplierId: number | null; unit: string | null
-  priceBuy: unknown; priceSell: unknown
+  priceBuy: number     // ← เปลี่ยนจาก unknown เป็น number
+  priceSell: number    // ← เปลี่ยนจาก unknown เป็น number
   minStock: number; maxStock: number
   location: string | null; isActive: boolean
 }

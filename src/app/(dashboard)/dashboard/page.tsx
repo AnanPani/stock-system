@@ -91,7 +91,7 @@ export default async function DashboardPage() {
                     <p className="text-xs text-gray-500">{product.code}</p>
                   </div>
                   <span className="text-sm font-bold text-red-600">
-                    เหลือ {product.quantity} {product.unit}
+                    เหลือ {product.quantity} / {product.unit}
                   </span>
                 </div>
               ))}

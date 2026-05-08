@@ -24,6 +24,7 @@ export async function POST(req: NextRequest) {
         priceSell:   Number(body.priceSell ?? 0),
         quantity:    Number(body.quantity  ?? 0),
         minStock:    Number(body.minStock  ?? 10),
+        maxStock:    Number(body.maxStock  ?? 1000),  // ← เพิ่มตรงนี้
         location:    body.location    || null,
         images: {
           create: (body.images ?? []).map((img: { url: string; isPrimary: boolean }) => ({
