@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { sendStockMovementAlert, sendLowStockAlert } from '@/lib/notify'
 
 export async function GET() {
   const movements = await prisma.stockMovement.findMany({
@@ -72,6 +73,37 @@ export async function POST(req: NextRequest) {
         }
       }),
     })
+    
+    // หลัง createMany stock movements สำเร็จ
+    await sendStockMovementAlert(
+      type as 'receive' | 'issue',
+      items.map((item: { productId: number; receiveQty?: number; issueQty?: number }) => {
+        const qty = type === 'receive' ? (item.receiveQty ?? 0) : (item.issueQty ?? 0)
+        const product = currentProducts.find((p) => p.id === item.productId)
+        return {
+          name:     product?.name ?? 'unknown',
+          quantity: qty,
+          unit:     product?.unit ?? null,
+        }
+      })
+    )
+
+    // เช็คสต็อกใกล้หมดหลังเบิกออก
+    if (type === 'issue') {
+      const updatedProducts = await prisma.product.findMany({
+        where: { id: { in: items.map((i: { productId: number }) => i.productId) } },
+      })
+      const newLowStock = updatedProducts.filter((p) => p.quantity <= p.minStock)
+      if (newLowStock.length > 0) {
+        await sendLowStockAlert(newLowStock.map((p) => ({
+          name:     p.name,
+          code:     p.code,
+          quantity: p.quantity,
+          minStock: p.minStock,
+          unit:     p.unit,
+        })))
+      }
+    }
 
     return NextResponse.json({ success: true, updated: results.length }, { status: 201 })
   } catch (error: unknown) {

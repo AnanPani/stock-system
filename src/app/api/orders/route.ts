@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { sendOrderAlert } from '@/lib/notify'
 
 function generateOrderNo(type: string) {
   const prefix = type === 'purchase' ? 'PO' : type === 'sale' ? 'SO' : 'IN'
@@ -60,6 +61,8 @@ export async function POST(req: NextRequest) {
         attachments: true,
       },
     })
+
+    await sendOrderAlert(order.orderNo, order.type, Number(order.totalAmount))
 
     return NextResponse.json(order, { status: 201 })
   } catch (error: unknown) {

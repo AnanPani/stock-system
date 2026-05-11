@@ -5,8 +5,10 @@ export default auth((req) => {
   const isLoggedIn  = !!req.auth
   const isLoginPage = req.nextUrl.pathname === '/login'
   const isApiAuth   = req.nextUrl.pathname.startsWith('/api/auth')
+  const isApiNotify   = req.nextUrl.pathname.startsWith('/api/notify')  // ← เพิ่ม
 
   if (isApiAuth) return NextResponse.next()
+  if (isApiNotify) return NextResponse.next()  // ← เพิ่ม
 
   if (!isLoggedIn && !isLoginPage) {
     return NextResponse.redirect(new URL('/login', req.nextUrl))

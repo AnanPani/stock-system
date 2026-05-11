@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { Package, X, ZoomIn } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { Package, X, ZoomIn, Trash2, AlertTriangle } from 'lucide-react'
 
 type ProductImage = {
   id: number
@@ -36,9 +37,13 @@ type Product = {
 }
 
 export default function ProductsTable({ products }: { products: Product[] }) {
+  const router = useRouter()
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
   const [lightboxName, setLightboxName] = useState('')
   const [visible, setVisible] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<Product | null>(null)
+  const [deleting, setDeleting] = useState(false)
+  const [modalVisible, setModalVisible] = useState(false)
 
   function openLightbox(url: string, name: string) {
     setLightboxUrl(url)
@@ -54,10 +59,33 @@ export default function ProductsTable({ products }: { products: Product[] }) {
     }, 200)
   }
 
-  // กด ESC เพื่อปิด
+  function openDeleteModal(product: Product) {
+    setDeleteTarget(product)
+    setTimeout(() => setModalVisible(true), 10)
+  }
+
+  function closeDeleteModal() {
+    setModalVisible(false)
+    setTimeout(() => setDeleteTarget(null), 200)
+  }
+
+  async function handleDelete() {
+    if (!deleteTarget) return
+    setDeleting(true)
+    const res = await fetch(`/api/products/${deleteTarget.id}`, { method: 'DELETE' })
+    if (res.ok) {
+      closeDeleteModal()
+      router.refresh()
+    }
+    setDeleting(false)
+  }
+
   useEffect(() => {
     function handleKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') closeLightbox()
+      if (e.key === 'Escape') {
+        closeLightbox()
+        closeDeleteModal()
+      }
     }
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey)
@@ -120,10 +148,7 @@ export default function ProductsTable({ products }: { products: Product[] }) {
                               className="object-cover w-full h-full transition-transform duration-200 group-hover:scale-110"
                             />
                             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
-                              <ZoomIn
-                                size={16}
-                                className="text-white opacity-0 group-hover:opacity-100 transition-opacity"
-                              />
+                              <ZoomIn size={16} className="text-white opacity-0 group-hover:opacity-100 transition-opacity" />
                             </div>
                           </>
                         ) : (
@@ -200,13 +225,22 @@ export default function ProductsTable({ products }: { products: Product[] }) {
                     </td>
 
                     {/* จัดการ */}
-                    <td className="py-3 px-4 text-center">
-                      <Link
-                        href={`/products/${product.id}`}
-                        className="text-blue-600 hover:text-blue-800 hover:underline text-xs font-medium"
-                      >
-                        แก้ไข
-                      </Link>
+                    <td className="py-3 px-4">
+                      <div className="flex items-center justify-center gap-3">
+                        <Link
+                          href={`/products/${product.id}`}
+                          className="text-blue-600 hover:text-blue-800 hover:underline text-xs font-medium"
+                        >
+                          แก้ไข
+                        </Link>
+                        <button
+                          onClick={() => openDeleteModal(product)}
+                          className="text-red-400 hover:text-red-600 transition-colors p-1 rounded hover:bg-red-50"
+                          title="ลบสินค้า"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 )
@@ -216,71 +250,152 @@ export default function ProductsTable({ products }: { products: Product[] }) {
         </table>
 
         {/* Footer */}
-{products.length > 0 && (
-  <div className="px-4 py-3 bg-gray-50 border-t border-gray-200">
-    <div className="flex items-center justify-between">
-      <span className="text-xs text-gray-400">
-        ทั้งหมด {products.length.toLocaleString('th-TH')} รายการ
-      </span>
-      <div className="flex items-center gap-6 text-xs">
-        {/* จำนวนชิ้นรวม */}
-        <div className="flex items-center gap-1.5">
-          <span className="text-gray-400">สต็อกรวม</span>
-          <span className="font-medium text-gray-700">
-            {products
-              .reduce((sum, p) => sum + p.quantity, 0)
-              .toLocaleString('th-TH')}{' '}
-            ชิ้น
-          </span>
-        </div>
-
-        {/* เส้นคั่น */}
-        <div className="w-px h-4 bg-gray-200" />
-
-        {/* มูลค่าต้นทุนรวม */}
-        <div className="flex items-center gap-1.5">
-          <span className="text-gray-400">ทุนรวม</span>
-          <span className="font-medium text-gray-700">
-            ฿{products
-              .reduce((sum, p) => sum + p.priceBuy * p.quantity, 0)
-              .toLocaleString('th-TH', { minimumFractionDigits: 2 })}
-          </span>
-        </div>
-
-        {/* เส้นคั่น */}
-        <div className="w-px h-4 bg-gray-200" />
-
-        {/* มูลค่าขายรวม */}
-        <div className="flex items-center gap-1.5">
-          <span className="text-gray-400">มูลค่าขายรวม</span>
-          <span className="font-bold text-green-600">
-            ฿{products
-              .reduce((sum, p) => sum + p.priceSell * p.quantity, 0)
-              .toLocaleString('th-TH', { minimumFractionDigits: 2 })}
-          </span>
-        </div>
-
-        {/* เส้นคั่น */}
-        <div className="w-px h-4 bg-gray-200" />
-
-        {/* กำไรรวม */}
-        <div className="flex items-center gap-1.5">
-          <span className="text-gray-400">กำไรรวม</span>
-          <span className={`font-bold ${
-            products.reduce((sum, p) => sum + (p.priceSell - p.priceBuy) * p.quantity, 0) >= 0
-              ? 'text-blue-600'
-              : 'text-red-600'
-          }`}>
-            ฿{products
-              .reduce((sum, p) => sum + (p.priceSell - p.priceBuy) * p.quantity, 0)
-              .toLocaleString('th-TH', { minimumFractionDigits: 2 })}
-          </span>
-        </div>
+        {products.length > 0 && (
+          <div className="px-4 py-3 bg-gray-50 border-t border-gray-200">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-gray-400">
+                ทั้งหมด {products.length.toLocaleString('th-TH')} รายการ
+              </span>
+              <div className="flex items-center gap-6 text-xs">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-gray-400">สต็อกรวม</span>
+                  <span className="font-medium text-gray-700">
+                    {products.reduce((sum, p) => sum + p.quantity, 0).toLocaleString('th-TH')} ชิ้น
+                  </span>
+                </div>
+                <div className="w-px h-4 bg-gray-200" />
+                <div className="flex items-center gap-1.5">
+                  <span className="text-gray-400">ทุนรวม</span>
+                  <span className="font-medium text-gray-700">
+                    ฿{products.reduce((sum, p) => sum + p.priceBuy * p.quantity, 0)
+                      .toLocaleString('th-TH', { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+                <div className="w-px h-4 bg-gray-200" />
+                <div className="flex items-center gap-1.5">
+                  <span className="text-gray-400">มูลค่าขายรวม</span>
+                  <span className="font-bold text-green-600">
+                    ฿{products.reduce((sum, p) => sum + p.priceSell * p.quantity, 0)
+                      .toLocaleString('th-TH', { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+                <div className="w-px h-4 bg-gray-200" />
+                <div className="flex items-center gap-1.5">
+                  <span className="text-gray-400">กำไรรวม</span>
+                  <span className={`font-bold ${
+                    products.reduce((sum, p) => sum + (p.priceSell - p.priceBuy) * p.quantity, 0) >= 0
+                      ? 'text-blue-600'
+                      : 'text-red-600'
+                  }`}>
+                    ฿{products.reduce((sum, p) => sum + (p.priceSell - p.priceBuy) * p.quantity, 0)
+                      .toLocaleString('th-TH', { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
-    </div>
-  </div>
-)}
-</div>
+
+      {/* Delete Modal */}
+      {deleteTarget && (
+        <div
+          className={`fixed inset-0 z-50 flex items-center justify-center p-4 transition-all duration-200 ${
+            modalVisible ? 'bg-black/50' : 'bg-black/0'
+          }`}
+          onClick={closeDeleteModal}
+        >
+          <div
+            className={`bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 transition-all duration-200 ${
+              modalVisible ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 translate-y-4'
+            }`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Icon */}
+            <div className="flex items-center justify-center w-14 h-14 bg-red-100 rounded-full mx-auto mb-4">
+              <AlertTriangle size={28} className="text-red-600" />
+            </div>
+
+            {/* Title */}
+            <h2 className="text-xl font-bold text-gray-800 text-center mb-1">
+              ยืนยันการลบสินค้า
+            </h2>
+            <p className="text-sm text-gray-500 text-center mb-5">
+              การลบนี้ไม่สามารถย้อนกลับได้
+            </p>
+
+            {/* Product Info */}
+            <div className="bg-gray-50 rounded-xl p-4 mb-6 flex items-center gap-4">
+              {deleteTarget.images[0] ? (
+                <div className="relative w-14 h-14 rounded-lg overflow-hidden flex-shrink-0">
+                  <Image
+                    src={deleteTarget.images[0].url}
+                    alt={deleteTarget.name}
+                    fill
+                    sizes="56px"
+                    className="object-cover"
+                  />
+                </div>
+              ) : (
+                <div className="w-14 h-14 rounded-lg bg-gray-200 flex items-center justify-center flex-shrink-0">
+                  <Package size={24} className="text-gray-400" />
+                </div>
+              )}
+              <div className="min-w-0">
+                <p className="font-semibold text-gray-800 truncate">{deleteTarget.name}</p>
+                <p className="text-xs text-gray-400 mt-0.5">{deleteTarget.code}</p>
+                <div className="flex items-center gap-3 mt-1.5">
+                  <span className="text-xs text-gray-500">
+                    คงเหลือ{' '}
+                    <span className="font-medium text-gray-700">
+                      {deleteTarget.quantity.toLocaleString('th-TH')} / {deleteTarget.maxStock}
+                    </span>
+                  </span>
+                  <span className="text-xs text-gray-500">
+                    ราคา{' '}
+                    <span className="font-medium text-green-600">
+                      ฿{deleteTarget.priceSell.toLocaleString('th-TH', { minimumFractionDigits: 2 })}
+                    </span>
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Buttons */}
+            <div className="flex gap-3">
+              <button
+                onClick={closeDeleteModal}
+                disabled={deleting}
+                className="flex-1 bg-gray-100 text-gray-700 py-2.5 rounded-xl hover:bg-gray-200 transition-colors font-medium text-sm disabled:opacity-50"
+              >
+                ยกเลิก
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="flex-1 bg-red-600 text-white py-2.5 rounded-xl hover:bg-red-700 transition-colors font-medium text-sm disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {deleting ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    กำลังลบ...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 size={16} />
+                    ลบสินค้า
+                  </>
+                )}
+              </button>
+            </div>
+
+            {/* ESC hint */}
+            <p className="text-center text-xs text-gray-300 mt-3">
+              กด ESC เพื่อยกเลิก
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Lightbox */}
       {lightboxUrl && (
@@ -290,7 +405,6 @@ export default function ProductsTable({ products }: { products: Product[] }) {
           }`}
           onClick={closeLightbox}
         >
-          {/* Close Button */}
           <button
             onClick={closeLightbox}
             className="absolute top-4 right-4 text-white bg-white/20 hover:bg-white/30 rounded-full p-2.5 transition-colors z-10"
@@ -298,7 +412,6 @@ export default function ProductsTable({ products }: { products: Product[] }) {
             <X size={22} />
           </button>
 
-          {/* ESC hint + Product Name */}
           <div className={`absolute top-4 left-1/2 -translate-x-1/2 flex items-center gap-3 transition-all duration-200 ${
             visible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2'
           }`}>
@@ -310,7 +423,6 @@ export default function ProductsTable({ products }: { products: Product[] }) {
             </div>
           </div>
 
-          {/* Image */}
           <div
             className={`relative w-full max-w-2xl aspect-square transition-all duration-200 ${
               visible ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
@@ -326,7 +438,6 @@ export default function ProductsTable({ products }: { products: Product[] }) {
             />
           </div>
 
-          {/* Hint */}
           <p className={`absolute bottom-4 left-1/2 -translate-x-1/2 text-white/40 text-xs transition-all duration-200 ${
             visible ? 'opacity-100' : 'opacity-0'
           }`}>
