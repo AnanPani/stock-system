@@ -1,29 +1,30 @@
----
-markdown# 📦 Stock Management System
+# 📦 Stock Management System
 
 ระบบจัดการสต็อกสินค้าและออเดอร์ สำหรับธุรกิจขนาดเล็กถึงกลาง พัฒนาด้วย Next.js 16, TypeScript, Prisma และ PostgreSQL
+
 ---
 
 ## 🖥️ หน้าจอระบบ
 
-| หน้า           | คำอธิบาย                                |
-| -------------- | --------------------------------------- |
-| Dashboard      | ภาพรวมสต็อก, ออเดอร์, และสินค้าใกล้หมด  |
-| สินค้า         | จัดการสินค้า เพิ่ม/แก้ไข/ลบ พร้อมรูปภาพ |
-| ออเดอร์        | สร้างและติดตาม PO/SO พร้อมเอกสารแนบ     |
-| รับ/เบิกสินค้า | บันทึกการรับเข้าและเบิกออกจากคลัง       |
-| ผู้ใช้งาน      | จัดการสิทธิ์ Admin / Manager / Staff    |
-| รายงาน         | สรุปสต็อกและออเดอร์                     |
-| ตั้งค่า        | จัดการหมวดหมู่และผู้จำหน่าย             |
+| หน้า           | คำอธิบาย                                                         |
+| -------------- | ---------------------------------------------------------------- |
+| Dashboard      | ภาพรวมสต็อก, ออเดอร์, สินค้าใกล้หมด และปุ่มทดสอบแจ้งเตือน        |
+| สินค้า         | จัดการสินค้า เพิ่ม/แก้ไข/ลบ พร้อมรูปภาพสูงสุด 4 รูป และ Lightbox |
+| ออเดอร์        | สร้างและติดตาม PO/SO พร้อมเอกสารแนบและอัปเดตสถานะ                |
+| รับ/เบิกสินค้า | บันทึกการรับเข้าและเบิกออกจากคลัง                                |
+| ผู้ใช้งาน      | จัดการสิทธิ์ Admin / Manager / Staff                             |
+| รายงาน         | สรุปสต็อก มูลค่า และออเดอร์                                      |
+| ตั้งค่า        | จัดการหมวดหมู่และผู้จำหน่าย                                      |
 
 ---
 
 ## 🛠️ Tech Stack
 
 - **Frontend**: Next.js 16, TypeScript, Tailwind CSS, Lucide React
-- **Backend**: Next.js API Routes, Prisma ORM
+- **Backend**: Next.js API Routes, Prisma ORM 7
 - **Database**: PostgreSQL 16
-- **Auth**: NextAuth v5 (Credentials)
+- **Auth**: NextAuth v5 (Credentials + JWT)
+- **Notification**: Discord Webhook
 - **CI/CD**: Jenkins (planned)
 
 ---
@@ -62,6 +63,9 @@ cp .env.example .env
 ```env
 DATABASE_URL="postgresql://USER:PASSWORD@HOST:5432/stockdb?schema=public"
 AUTH_SECRET="your-secret-key"
+DISCORD_WEBHOOK_URL="https://discord.com/api/webhooks/xxxx/yyyy"
+CRON_SECRET="your-cron-secret"
+NEXT_PUBLIC_CRON_SECRET="your-cron-secret"
 ```
 
 ### 4. สร้าง Database Schema
@@ -71,7 +75,20 @@ npx prisma db push
 npx prisma generate
 ```
 
-### 5. รัน Development Server
+### 5. สร้าง Admin User
+
+```bash
+npx tsx scripts/seed-admin.ts
+```
+
+ค่าเริ่มต้น:
+
+- **Username**: `admin`
+- **Password**: `admin1234`
+
+> ⚠️ กรุณาเปลี่ยนรหัสผ่านหลังจาก Login ครั้งแรก
+
+### 6. รัน Development Server
 
 ```bash
 npm run dev
@@ -83,44 +100,77 @@ npm run dev
 
 ## 🗄️ โครงสร้างฐานข้อมูล
 
-users ผู้ใช้งานระบบ (Admin / Manager / Staff)
-categories หมวดหมู่สินค้า
-suppliers ผู้จำหน่าย
-products สินค้า
-product_images รูปภาพสินค้า (สูงสุด 4 รูป)
-orders ออเดอร์ (PO / SO / Internal)
-order_items รายการสินค้าในออเดอร์
-order_attachments เอกสารแนบออเดอร์
-stock_movements บันทึกการรับ/เบิก/ปรับยอดสต็อก
+```
+users              ผู้ใช้งานระบบ (Admin / Manager / Staff)
+categories         หมวดหมู่สินค้า
+suppliers          ผู้จำหน่าย
+products           สินค้า
+product_images     รูปภาพสินค้า (สูงสุด 4 รูป)
+orders             ออเดอร์ (PO / SO / Internal)
+order_items        รายการสินค้าในออเดอร์
+order_attachments  เอกสารแนบออเดอร์
+stock_movements    บันทึกการรับ/เบิก/ปรับยอดสต็อก
+```
 
 ---
 
 ## 📁 โครงสร้างโปรเจค
 
+```
 stock-system/
 ├── src/
-│ ├── app/
-│ │ ├── (dashboard)/ หน้าหลักทั้งหมด
-│ │ │ ├── dashboard/ หน้า Dashboard
-│ │ │ ├── products/ จัดการสินค้า
-│ │ │ ├── orders/ จัดการออเดอร์
-│ │ │ ├── stock-movements/ รับ/เบิกสินค้า
-│ │ │ ├── users/ จัดการผู้ใช้
-│ │ │ ├── reports/ รายงาน
-│ │ │ └── settings/ ตั้งค่า
-│ │ ├── api/ API Routes
-│ │ └── login/ หน้า Login
-│ ├── components/ React Components
-│ ├── lib/ Utilities (Prisma, Auth, Utils)
-│ └── types/ TypeScript Types
+│   ├── app/
+│   │   ├── (dashboard)/          หน้าหลักทั้งหมด
+│   │   │   ├── dashboard/        หน้า Dashboard
+│   │   │   ├── products/         จัดการสินค้า
+│   │   │   ├── orders/           จัดการออเดอร์
+│   │   │   ├── stock-movements/  รับ/เบิกสินค้า
+│   │   │   ├── users/            จัดการผู้ใช้
+│   │   │   ├── reports/          รายงาน
+│   │   │   └── settings/         ตั้งค่า
+│   │   ├── api/                  API Routes
+│   │   │   ├── auth/             NextAuth Handler
+│   │   │   ├── products/         CRUD สินค้า
+│   │   │   ├── orders/           CRUD ออเดอร์
+│   │   │   ├── stock-movements/  รับ/เบิกสินค้า
+│   │   │   ├── categories/       CRUD หมวดหมู่
+│   │   │   ├── suppliers/        CRUD ผู้จำหน่าย
+│   │   │   ├── users/            CRUD ผู้ใช้
+│   │   │   ├── upload/           อัปโหลดรูปภาพ
+│   │   │   ├── notify/           ระบบแจ้งเตือน Discord
+│   │   │   └── product-images/   จัดการรูปสินค้า
+│   │   └── login/                หน้า Login
+│   ├── components/               React Components
+│   │   ├── Sidebar.tsx
+│   │   ├── ProductForm.tsx
+│   │   ├── ProductEditForm.tsx
+│   │   ├── ProductImageGallery.tsx
+│   │   ├── ProductsTable.tsx
+│   │   ├── OrderForm.tsx
+│   │   ├── OrderStatusActions.tsx
+│   │   ├── StockReceiveForm.tsx
+│   │   ├── StockIssueForm.tsx
+│   │   ├── UserForm.tsx
+│   │   ├── SettingsTabs.tsx
+│   │   ├── ImageUploader.tsx
+│   │   ├── NotifyButton.tsx
+│   │   └── Providers.tsx
+│   ├── lib/                      Utilities
+│   │   ├── prisma.ts             Prisma Client
+│   │   ├── auth.ts               NextAuth Config
+│   │   ├── notify.ts             Discord Webhook
+│   │   └── utils.ts              Helper Functions
+│   └── types/                    TypeScript Types
+│       └── next-auth.d.ts
 ├── prisma/
-│ └── schema.prisma Database Schema
+│   └── schema.prisma             Database Schema
 ├── public/
-│ └── uploads/ รูปภาพที่อัปโหลด
+│   └── uploads/                  รูปภาพที่อัปโหลด
 ├── scripts/
-│ └── seed-admin.ts สร้าง Admin User
-├── .env.example ตัวอย่าง Environment Variables
+│   └── seed-admin.ts             สร้าง Admin User
+├── .env.example
 └── README.md
+```
 
 ---
 
@@ -134,15 +184,42 @@ stock-system/
 
 ---
 
+## 🔔 ระบบแจ้งเตือน Discord
+
+ระบบจะส่งแจ้งเตือนไปที่ Discord อัตโนมัติเมื่อ:
+
+- สต็อกสินค้าต่ำกว่าขั้นต่ำ
+- มีออเดอร์ใหม่เข้ามา
+- มีการรับ/เบิกสินค้า
+
+### ตั้งค่า Cron Job (หลัง Deploy)
+
+```bash
+# แจ้งเตือนสต็อกใกล้หมด ทุกวัน 8:00 น.
+0 8 * * * curl -s -X POST https://your-domain.com/api/notify/low-stock \
+  -H "Authorization: Bearer YOUR_CRON_SECRET"
+```
+
+### ทดสอบแจ้งเตือน
+
+```bash
+curl -X POST http://localhost:3000/api/notify/low-stock \
+  -H "Authorization: Bearer YOUR_CRON_SECRET"
+```
+
+---
+
 ## 🔄 CI/CD Pipeline (Jenkins)
 
+```
 Git Push → Jenkins Webhook
-→ Lint (ESLint)
-→ Test (Jest)
-→ Build (next build)
-→ Docker Build
-→ Deploy Staging
-→ Deploy Production
+       → Lint (ESLint)
+       → Test (Jest)
+       → Build (next build)
+       → Docker Build
+       → Deploy Staging
+       → Deploy Production
+```
 
 > 📌 Jenkins configuration อยู่ในแผนพัฒนาต่อไป
 
@@ -150,9 +227,14 @@ Git Push → Jenkins Webhook
 
 ## 📝 TODO
 
-- [ ] ระบบแจ้งเตือนสต็อกใกล้หมด (Email / Line)
-- [ ] Export รายงาน PDF / Excel
+- [x] ระบบ Login / Auth (NextAuth v5)
+- [x] จัดการสินค้า พร้อมรูปภาพ Lightbox
+- [x] จัดการออเดอร์ PO/SO
+- [x] รับ/เบิกสินค้า
+- [x] ระบบแจ้งเตือน Discord Webhook
+- [x] Modal Confirm ก่อนลบ
 - [ ] Search และ Filter ในหน้าสินค้าและออเดอร์
+- [ ] Export รายงาน PDF / Excel
 - [ ] Jenkins CI/CD Pipeline
 - [ ] Unit Tests
 - [ ] Docker Compose สำหรับ Production
